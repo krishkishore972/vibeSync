@@ -22,7 +22,8 @@ const handler = NextAuth({
                     dbUser = await prisma.user.create({
                         data:{
                             email:user.email,
-                            provider:"Google"
+                            provider:"Google",
+                            role:"Creater"
                         }
                     })
                 }

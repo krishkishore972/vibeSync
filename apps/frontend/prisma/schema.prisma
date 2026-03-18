@@ -54,6 +54,5 @@ model Upvotes {
   streamId String
   user     User   @relation(fields: [userId], references: [id])
   stream   Stream @relation(fields: [streamId], references: [id])
-
   @@unique([userId, streamId])
 }

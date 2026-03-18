@@ -1,96 +1,225 @@
-import type { Room } from "../types";
-import type { Song } from "../types";
 
-export class RoomManager {
+import { WebSocket } from "ws";
 
-    private rooms = new Map<string, Room>();
+type Song = {
+    id: string
+    title: string
+    url: string
+    youtubeId: string
+    smallImg: string
+    bigImg: string
+    addedBy: string
+    upvoters: Set<string>
+    downvoters: Set<string>
+    votes: number
+    addedAt: number
+}
 
-    createRoom(roomId: string, hostId: string) {
-        this.rooms.set(roomId, {
-            id: roomId,
-            hostId,
-            users: new Set([hostId]),
-            queue: []
-        })
+type User = {
+    userId: string,
+    ws: WebSocket[],
+}
+
+type Room = {
+    hostId: string,
+    users: Set<string>
+    queue: Song[]
+    currentSong?: Song
+}
+
+
+
+  export class RoomManager {
+
+    private static instance: RoomManager;
+    public rooms = new Map<string, Room>();
+    public users = new Map<string, User>();
+    public wsToRoom = new Map<WebSocket, string>;//ws->roomId
+     
+
+    private constructor() {
+        this.rooms = new Map();
+        this.users = new Map();
+        this.wsToRoom = new Map();
     }
 
-    deleteRoom(roomId: string) {
-        this.rooms.delete(roomId);
+    static getInstance() {
+        if (!RoomManager.instance) {
+            RoomManager.instance = new RoomManager()
+        }
+        return RoomManager.instance
     }
 
-    joinRoom(roomId: string, userId: string) {
+    // user Management
+    addUser(userId: string, ws: WebSocket) {
+        const existing = this.users.get(userId);
+        if (!existing) {
+            this.users.set(userId, { userId, ws: [ws]})
+        } else {
+            if (!existing.ws.some((existingWs) => existingWs === ws)) {
+                existing.ws.push(ws);
+            }
+        }
+    }
+
+    getUser(userId: string) {
+        return this.users.get(userId);
+    }
+
+    removeUser(userId: string, ws: WebSocket) {
+        const user = this.users.get(userId);
+        if (user) {
+            user.ws = user.ws.filter((existingWs) => existingWs !== ws)
+        }
+        if (user?.ws.length === 0) {
+            this.users.delete(userId)
+        }
+    }
+
+    // room Management
+    createRoom(roomId: string,hostId:string) {
+        if (!this.rooms.get(roomId)) {
+            this.rooms.set(roomId, {
+                users: new Set(),
+                 queue:[],
+                 hostId
+            })
+        }
+    }
+
+    getRoom(roomId:string){
+        return this.rooms.get(roomId);
+    }
+
+
+    joinRoom(roomId: string, hostId: string, userId: string, ws: WebSocket,) {
         let room = this.rooms.get(roomId);
+        let user = this.users.get(userId);
         if (!room) {
-            this.createRoom(roomId, userId);
+            this.createRoom(roomId,hostId)
             room = this.rooms.get(roomId);
         }
-        room?.users.add(userId);
+        if (!user) {
+            this.addUser(userId, ws)
+            user = this.getUser(userId);
+        } else {
+            if (!user.ws.some((existingws) => existingws === ws)) {
+                user.ws.push(ws);
+            }
+        }
+        this.wsToRoom.set(ws, roomId)
+        if (user && room) {
+            room.users.add(userId)
+        }
     }
 
-    leaveRoom(roomId: string, userId: string) {
-        const room = this.rooms.get(roomId);
-        if (!room) {
+    leaveRoom(userId:string,ws:WebSocket){
+        const roomId = this.wsToRoom.get(ws);
+        if (!roomId) {
             return
         }
-        room.users.delete(userId);
-        if (room.users.size === 0) {
-            this.deleteRoom(roomId);
+        this.wsToRoom.delete(ws);
+        this.removeUser(userId,ws);
+
+
+        const room = this.getRoom(roomId);
+        if(!room) return;
+        const isUserStillConnected = this.users.get(userId);
+        if (!isUserStillConnected) {
+            room.users.delete(userId);
+            if (room.users.size === 0) {
+            this.rooms.delete(roomId);
+            }
         }
     }
 
-    addSong(roomId: string, song: Song) {
-        const room = this.rooms.get(roomId);
-        if (!room) {
-            return
-        }
-        song.voters = new Set();
-        song.votes = 0;
-        room.queue.push(song)
-    }
+    // song Management
 
-    voteSong(roomId: string, songId: string, userId: string) {
-        const room = this.rooms.get(roomId);
-        if (!room) {
-            return
-        }
-        const song = room.queue.find(el => el.id === songId);
-        if (!song) {
-            return
-        }
-        if (song.voters.has(userId)) {
-            return
-        }
-        song.voters.add(userId);
-        song.votes += 1;
+    addSong(roomId:string,song:Song){
+        const room = this.getRoom(roomId);
+        if(!room) return;
+        const isDuplicate  = room.currentSong?.youtubeId === song.youtubeId || room.queue.some((s) => s.youtubeId === song.youtubeId)
+        if(isDuplicate) return;
+        room.queue.push(song);
         this.sortQueue(room);
     }
 
-    private sortQueue(room: Room) {
-        room.queue.sort((a, b) => {
-            if (b.votes !== a.votes) {
-                return b.votes - a.votes;
+    voteSong(userId:string,songId:string,roomId:string,direction:"up"|"down"){
+        const room = this.getRoom(roomId);
+        if(!room) return false;
+
+        const song = room.queue.find((s) => s.id === songId);
+        if(!song) return false;
+
+        if (direction == "up") {
+            if (song.upvoters.has(userId)) {
+                return false;
             }
-            return a.addedAt - b.addedAt;
-        });
+            song.downvoters.delete(userId);
+            song.upvoters.add(userId);
+        } else if(direction == "down"){
+            if (song.downvoters.has(userId)) {
+                return false;
+            }
+            song.upvoters.delete(userId);
+            song.downvoters.add(userId);
+        }
+        song.votes = song.upvoters.size - song.downvoters.size
+        this.sortQueue(room);
+        return true;
     }
 
-    getQueue(roomId: string) {
-        const room = this.rooms.get(roomId)
-        if (!room) {
-            return []
-        }
-        return room.queue
-    }
-
-    playNext(roomId: string) {
-        const room = this.rooms.get(roomId);
-        if (!room) {
-            return
-        }
+    playNext(roomId:string){
+        const room = this.getRoom(roomId);
+        if(!room) return null;
         const nextSong = room.queue.shift();
         if (nextSong) {
-            room.currentSong = nextSong
+            room.currentSong = {
+                ...nextSong,
+                upvoters:new Set(),
+                downvoters:new Set(),
+                votes:nextSong.votes
+            };
         }
-        return nextSong
+        return room.currentSong ?? null
     }
+
+    getQueue(roomId:string){
+        return this.rooms.get(roomId)?.queue ?? []
+    }
+
+    getCurrentSong(roomId:string){
+        return this.rooms.get(roomId)?.currentSong ?? null 
+    }
+
+    private sortQueue(room: Room) {
+    room.queue.sort((a,b) => {
+        if(b.votes !== a.votes) return b.votes - a.votes
+        return a.addedAt - b.addedAt
+    })
+  }
+  
+  // broadcasting
+  broadcast(roomId:string,payload:object,excludeWs?:WebSocket){
+    const room = this.getRoom(roomId);
+    if(!room) return;
+    const message = JSON.stringify(payload);
+    room.users.forEach((userId) => {
+        const user =  this.getUser(userId);
+        user?.ws.forEach((ws) => {
+            if (ws !== excludeWs && ws.readyState === WebSocket.OPEN) {
+                ws.send(message);
+            }
+        })
+    })
+  }
+
+  onDisconnect(userId:string,ws:WebSocket){
+    const roomId = this.wsToRoom.get(ws);
+    if (roomId) {
+        this.leaveRoom(userId,ws);
+    } else {
+        this.removeUser(userId,ws);
+    }
+  }
 }
