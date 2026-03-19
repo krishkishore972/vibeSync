@@ -4,8 +4,6 @@ export type Song = {
     title: string,
     url: string,
     youtubeId: string,
-    smallImg: string,
-    bigImg: string,
     addedBy: string,
     addedAt:number,
     votes:number,

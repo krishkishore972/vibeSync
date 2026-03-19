@@ -6,7 +6,7 @@ import { getYoutubeMetadata } from "@/app/lib/getYoutubeMetaData";
 
 const YT_REGEX = /^(?:https?:\/\/)?(?:www\.)?(?:m\.)?(?:youtube\.com\/(?:watch\?(?!.*\blist=)(?:.*&)?v=|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[?&]\S+)?$/
 
-const CreateStreamSchema = z.object({
+const CreateSongSchema = z.object({
     roomId:z.string(),
     url: z.string()
 })
@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
     }
     
     try {
-        const data = CreateStreamSchema.parse(await req.json());
+        const data = CreateSongSchema.parse(await req.json());
         if (!data.url.trim()) {
             return NextResponse.json(
                 {
@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
         })
         return NextResponse.json({
             message: "stream added",
-            id: song.id
+            song
         })
     } catch (error) {
         return NextResponse.json({
