@@ -6,8 +6,6 @@ type Song = {
     title: string
     url: string
     youtubeId: string
-    smallImg: string
-    bigImg: string
     addedBy: string
     upvoters: Set<string>
     downvoters: Set<string>
@@ -17,6 +15,7 @@ type Song = {
 
 type User = {
     userId: string,
+    userName:string,
     ws: WebSocket[],
 }
 
@@ -51,10 +50,10 @@ type Room = {
     }
 
     // user Management
-    addUser(userId: string, ws: WebSocket) {
+    addUser(userId: string, userName:string, ws: WebSocket) {
         const existing = this.users.get(userId);
         if (!existing) {
-            this.users.set(userId, { userId, ws: [ws]})
+            this.users.set(userId, { userId, ws: [ws],userName})
         } else {
             if (!existing.ws.some((existingWs) => existingWs === ws)) {
                 existing.ws.push(ws);
@@ -92,7 +91,7 @@ type Room = {
     }
 
 
-    joinRoom(roomId: string, hostId: string, userId: string, ws: WebSocket,) {
+    joinRoom(roomId: string, hostId: string, userId: string,userName:string, ws: WebSocket,) {
         let room = this.rooms.get(roomId);
         let user = this.users.get(userId);
         if (!room) {
@@ -100,7 +99,7 @@ type Room = {
             room = this.rooms.get(roomId);
         }
         if (!user) {
-            this.addUser(userId, ws)
+            this.addUser(userId,userName,ws)
             user = this.getUser(userId);
         } else {
             if (!user.ws.some((existingws) => existingws === ws)) {
@@ -184,13 +183,17 @@ type Room = {
         return room.currentSong ?? null
     }
 
-    getQueue(roomId:string){
-        return this.rooms.get(roomId)?.queue ?? []
-    }
+    getQueue(roomId: string) {
+    const queue = this.rooms.get(roomId)?.queue ?? [];
+    return queue.map(({ upvoters, downvoters, ...song }) => song);  
+}
 
-    getCurrentSong(roomId:string){
-        return this.rooms.get(roomId)?.currentSong ?? null 
-    }
+   getCurrentSong(roomId: string) {
+    const song = this.rooms.get(roomId)?.currentSong ?? null;
+    if (!song) return null;
+    const { upvoters, downvoters, ...rest } = song;
+    return rest;  
+}
 
     private sortQueue(room: Room) {
     room.queue.sort((a,b) => {

@@ -16,7 +16,7 @@ enum provider {
   Google
 }
 
-enum StreamType {
+enum SongType  {
   YouTube
 }
 
@@ -29,30 +29,42 @@ model User {
   id       String    @id @default(uuid())
   email    String    @unique
   provider provider
-  streams  Stream[]
+  currentRoomId  String?
+  currentRoom Room? @relation("RoomMembers",fields: [currentRoomId],references: [id])
+  songs    Song[]
   votes    Upvotes[]
   role     Role
+  hostedRooms   Room[]    @relation("RoomHost") 
 }
 
-model Stream {
+model Room {
+  id        String   @id @default(uuid())
+  hostId    String
+  host      User     @relation("RoomHost", fields: [hostId], references: [id]) 
+  members  User[]   @relation("RoomMembers")
+  songs     Song[]
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model Song {
   id          String     @id @default(uuid())
-  type        StreamType
+  type        SongType
   url         String
   extractedId String
   title       String     @default("")
-  smallImg    String     @default("")
-  bigImg      String     @default("")
-  active      Boolean    @default(true)
   userId      String
   user        User       @relation(fields: [userId], references: [id])
+  roomId      String
+  room        Room       @relation(fields: [roomId], references: [id])
   votes       Upvotes[]
 }
 
 model Upvotes {
   id       String @id @default(uuid())
   userId   String
-  streamId String
+  songId String
   user     User   @relation(fields: [userId], references: [id])
-  stream   Stream @relation(fields: [streamId], references: [id])
-  @@unique([userId, streamId])
+  song     Song   @relation(fields: [songId], references: [id])
+  @@unique([userId, songId])
 }

@@ -28,6 +28,7 @@ const handler = NextAuth({
                     })
                 }
                 token.id = dbUser.id
+                token.name =   user.name
            }
            return token
         },

@@ -28,14 +28,25 @@ wss.on("connection", (ws, req: IncomingMessage) => {
     }
 
     const userId = decoded.id
-    roomManager.addUser(userId, ws);
+    const userName = decoded.name
+    roomManager.addUser(userId, userName, ws);
     ws.on("message", (data) => {
         try {
             const message = JSON.parse(data.toString());
             switch (message.type) {
 
                 case "join-room":
-                    roomManager.joinRoom(message.roomId, userId, userId, ws);
+                    roomManager.joinRoom(message.roomId, userId, userId, userName, ws);
+                    ws.send(JSON.stringify({
+                        type: "room-joined",
+                        queue: roomManager.getQueue(message.roomId),
+                        currentSong: roomManager.getCurrentSong(message.roomId)
+                    }));
+                    roomManager.broadcast(message.roomId, {
+                        type: "user-joined",
+                        userId,
+                        username: userName
+                    }, ws);
                     break;
 
                 case "add-song":
@@ -47,43 +58,33 @@ wss.on("connection", (ws, req: IncomingMessage) => {
                     break
 
                 case "vote-song":
-                    const success = roomManager.voteSong(userId, message.songId, message.roomId, message.direction);
-                    if (success) {
-                        roomManager.broadcast(message.roomId, {
-                            type: "voted-song",
-                            queue: roomManager.getQueue(message.roomId)
-                        })
-                    } else {
-                        ws.send(JSON.stringify({ type: "error", message: "Vote failed" }));
+                    {
+                        const success = roomManager.voteSong(userId, message.songId, message.roomId, message.direction);
+                        if (success) {
+                            roomManager.broadcast(message.roomId, { type: "voted-song", queue: roomManager.getQueue(message.roomId) });
+                        } else {
+                            ws.send(JSON.stringify({ type: "error", message: "Vote failed" }));
+                        }
+                        break;
                     }
-                    break
 
 
                 case "play-next":
-                    const room = roomManager.getRoom(message.roomId);
-                    if (!room) {
-                        ws.send(JSON.stringify({ type: "error", message: "Room not found" }));
+                    {
+                        const room = roomManager.getRoom(message.roomId);
+                        if (!room) { ws.send(JSON.stringify({ type: "error", message: "Room not found" })); break; }
+                        if (room.hostId !== userId) { ws.send(JSON.stringify({ type: "error", message: "Only host can skip songs" })); break; }
+                        const nextSong = roomManager.playNext(message.roomId);
+                        roomManager.broadcast(message.roomId, { type: "song-changed", currentSong: nextSong, queue: roomManager.getQueue(message.roomId) });
                         break;
                     }
-                    if (room.hostId !== userId) {
-                        ws.send(JSON.stringify({ type: "error", message: "Only host can skip songs" }));
-                        break;
-                    }
-                    const nextSong = roomManager.playNext(message.roomId)
-                    roomManager.broadcast(message.roomId, {
-                        type: "song-changed",
-                        currentSong:nextSong,
-                        queue: roomManager.getQueue(message.roomId)
-                    })
-                    break
+
                 case "leave-room":
-                    roomManager.leaveRoom(userId, ws);
-                    const roomId = roomManager.wsToRoom.get(ws);
-                    roomManager.broadcast(message.roomId, {
-                        type: "left-room",
-                        room:roomManager.getRoom(roomId||"")
-                    })
-                    break
+                    {
+                        roomManager.leaveRoom(userId, ws);
+                        roomManager.broadcast(message.roomId, { type: "user-left", userId });
+                        break;
+                    }
             }
         } catch (error) {
             ws.send(JSON.stringify({ type: "error", message: "Invalid JSON" }));

@@ -2,18 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod"
 import { prisma } from "@/app/lib/db"
 import { getServerSession } from "next-auth";
-//@ts-ignore
-import youtubesearchapi from "youtube-search-api";
+import { getYoutubeMetadata } from "@/app/lib/getYoutubeMetaData";
 
-const YT_REGEX = new RegExp("/^(?:https?:\/\/)?(?:www\.)?(?:m\.)?(?:youtube\.com\/(?:watch\?(?!.*\blist=)(?:.*&)?v=|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[?&]\S+)?$/;")
+const YT_REGEX = /^(?:https?:\/\/)?(?:www\.)?(?:m\.)?(?:youtube\.com\/(?:watch\?(?!.*\blist=)(?:.*&)?v=|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[?&]\S+)?$/
 
 const CreateStreamSchema = z.object({
-    createrid: z.string(),
+    roomId:z.string(),
     url: z.string()
 })
 
 
 export async function POST(req: NextRequest) {
+    const session = await getServerSession();
+    if (!session?.user?.id) {
+        return NextResponse.json({ message: "Unauthenticated" }, { status: 403 })
+    }
+    
     try {
         const data = CreateStreamSchema.parse(await req.json());
         if (!data.url.trim()) {
@@ -28,26 +32,31 @@ export async function POST(req: NextRequest) {
         }
 
         const isYt = data.url.match(YT_REGEX)
-        const videoId = data.url ? data.url.match(YT_REGEX)?.[1]:null;
-        if (!isYt || ! videoId) {
+        const videoId = data.url ? data.url.match(YT_REGEX)?.[1] : null;
+        if (!isYt || !videoId) {
             return NextResponse.json({
                 message: "Invalid YouTube URL format"
             }, {
                 status: 400,
             })
         }
-        const res = await youtubesearchapi.GetVideoDetails(videoId);
-        const stream = await prisma.stream.create({
+        const meta = await getYoutubeMetadata(videoId);
+        if (!meta) {
+            return NextResponse.json({ message: "Could not fetch video details" }, { status: 400 })
+        }
+        const song = await prisma.song.create({
             data: {
+                roomId:data.roomId,
                 extractedId: videoId,
                 url: data.url,
                 type: "YouTube",
-                userId: data.createrid,
+                userId: session.user.id,
+                title: meta.title,
             }
         })
         return NextResponse.json({
             message: "stream added",
-            id: stream.id
+            id: song.id
         })
     } catch (error) {
         return NextResponse.json({
@@ -69,13 +78,13 @@ export async function GET(req: NextRequest) {
                 status: 403
             })
         }
-        const streams = await prisma.stream.findMany({
+        const songs = await prisma.song.findMany({
             where: {
                 userId: session.user.id
             }
         })
         return NextResponse.json({
-            streams
+            songs
         })
     } catch (error) {
         return NextResponse.json({
