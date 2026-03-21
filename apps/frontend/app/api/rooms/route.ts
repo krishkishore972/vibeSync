@@ -1,11 +1,12 @@
 import { prisma } from "@/app/lib/db";
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
+import { authOptions } from "@/app/lib/authOptions";
 
 
 
 export async function POST(req: NextRequest) {
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
         return NextResponse.json({
             message: "Unauthenticated"

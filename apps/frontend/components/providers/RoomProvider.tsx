@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useSocket } from "@/app/hooks/useSocket";
 
 import { Song, Listner, RoomContext } from "@/components/context/RoomContext";
@@ -16,7 +16,8 @@ export function RoomProvider({ children, roomId, userId }: {
     const [currentSong, setCurrentSong] = useState<Song | null>(null);
     const [listners, setListners] = useState<Listner[]>([]);
     const [token, setToken] = useState<string | null>(null);
-    
+    const sendRef = useRef<((payload: object) => void) | null>(null)
+
 
     useEffect(() => {
         axios.get("/api/auth/token")
@@ -24,7 +25,7 @@ export function RoomProvider({ children, roomId, userId }: {
             .catch(() => console.error("Failed to fetch token"));
     }, [])
 
- 
+
 
     const handleMessage = useCallback((msg: any) => {
         switch (msg.type) {
@@ -37,10 +38,15 @@ export function RoomProvider({ children, roomId, userId }: {
                 break;
             case "song-changed":
                 setCurrentSong(msg.currentSong ?? null);
-                setQueue(msg.queue??[]);
+                setQueue(msg.queue ?? []);
                 break;
             case "user-joined":
-                setListners((prev) => [...prev, { userId: msg.userId,userName:msg.userName}]);
+                setListners((prev) => {
+                    if (prev.some((l) => l.userId === msg.userId)) {
+                        return prev
+                    }
+                    return [...prev,{ userId: msg.userId, userName: msg.username }]
+                })
                 break;
             case "user-left":
                 setListners((prev) => prev.filter((user) => user.userId !== msg.userId));
@@ -51,27 +57,27 @@ export function RoomProvider({ children, roomId, userId }: {
         }
     }, [])
 
-    const wsUrl = token ? `ws://localhost:8000?token=${token}`: null
+    const wsUrl = token ? `ws://localhost:8000?token=${token}` : null
 
-    const {send} = useSocket(wsUrl,handleMessage)
+    const { send } = useSocket(wsUrl, handleMessage, () => {
+        console.log(" Sending join-room", roomId);
+        sendRef.current?.({ type: "join-room", roomId, hostId: userId });
+    })
 
-    useEffect(() => {
-        if (!token) {
-            return
-        }
-        send({type:"join-room",roomId,hostId:userId})
-    },[token])
+    sendRef.current = send;
+
+
 
     function addSong(song: Song) {
-        send({type:"add-song",roomId,song});
+        send({ type: "add-song", roomId, song });
     }
 
     function voteSong(songId: string, direction: "up" | "down") {
-        send({type:"vote-song",songId,direction,roomId});
+        send({ type: "vote-song", songId, direction, roomId });
     }
 
     function playNext() {
-        send({type:"play-next",roomId});
+        send({ type: "play-next", roomId });
     }
 
     return (

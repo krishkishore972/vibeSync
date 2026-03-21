@@ -210,7 +210,7 @@ type Room = {
     room.users.forEach((userId) => {
         const user =  this.getUser(userId);
         user?.ws.forEach((ws) => {
-            if (ws !== excludeWs && ws.readyState === WebSocket.OPEN) {
+            if (ws.readyState === WebSocket.OPEN) {
                 ws.send(message);
             }
         })

@@ -10,8 +10,7 @@ const wss = new WebSocketServer({ port: 8000 });
 const roomManager = RoomManager.getInstance();
 
 
-wss.on("connection", (ws, req: IncomingMessage) => {
-
+wss.on("connection", async (ws, req: IncomingMessage) => {
     const { query } = parse(req.url ?? "", true);
     const token = query.token as string;
     if (!token) {
@@ -20,22 +19,25 @@ wss.on("connection", (ws, req: IncomingMessage) => {
         return;
     }
 
-    const decoded = verifyToken(token);
+    const decoded = await verifyToken(token);
     if (!decoded) {
         ws.send(JSON.stringify({ type: "error", message: "Invalid token" }));
         ws.close();
-        return
+        return;
     }
 
-    const userId = decoded.id
-    const userName = decoded.name
+    const userId = decoded.id as string;
+    const userName = decoded.name as string;
     roomManager.addUser(userId, userName, ws);
     ws.on("message", (data) => {
         try {
             const message = JSON.parse(data.toString());
+            console.log(message.type);
+
             switch (message.type) {
 
                 case "join-room":
+                    console.log("room joined");
                     roomManager.joinRoom(message.roomId, userId, userId, userName, ws);
                     ws.send(JSON.stringify({
                         type: "room-joined",
@@ -49,13 +51,24 @@ wss.on("connection", (ws, req: IncomingMessage) => {
                     }, ws);
                     break;
 
-                case "add-song":
+                case "add-song": {
                     roomManager.addSong(message.roomId, message.song);
-                    roomManager.broadcast(message.roomId, {
-                        type: "queue-updated",
-                        queue: roomManager.getQueue(message.roomId)
-                    })
-                    break
+                    const currentSong = roomManager.getCurrentSong(message.roomId);
+                    if (!currentSong) {
+                        const nextSong = roomManager.playNext(message.roomId);
+                        roomManager.broadcast(message.roomId, {
+                            type: "song-changed",
+                            currentSong: nextSong,
+                            queue: roomManager.getQueue(message.roomId)
+                        });
+                    } else {
+                        roomManager.broadcast(message.roomId, {
+                            type: "queue-updated",
+                            queue: roomManager.getQueue(message.roomId)
+                        });
+                    }
+                    break;
+                }
 
                 case "vote-song":
                     {

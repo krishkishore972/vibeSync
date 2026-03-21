@@ -1,23 +1,20 @@
-import jwt from "jsonwebtoken"
+import { decode } from "next-auth/jwt";
 
-type NextAuthToken = {
-  id: string
-  email: string
-  name: string
-  iat: number
-  exp: number
-}
 
-export function verifyToken(token:string): NextAuthToken | null {
+
+export async function verifyToken(token: string) {
     try {
         const secret = process.env.NEXTAUTH_SECRET;
         if (!secret) {
             throw new Error("NEXTAUTH_SECRET not set")
         }
-        const decoded = jwt.verify(token,secret) as NextAuthToken
-        return decoded
+        const decoded = await decode({
+            token,
+            secret: process.env.NEXTAUTH_SECRET!,
+        })
+        return decoded;
     } catch (error) {
-         return null
+        return null
     }
 }
 
