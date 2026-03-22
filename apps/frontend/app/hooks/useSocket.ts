@@ -1,39 +1,43 @@
 import { useCallback, useEffect, useRef } from "react";
 
-export function useSocket(url: string | null, onMessage: (msg: any) => void,onOpen?: () => void) {
-    const wsRef = useRef<WebSocket | null>(null);
+export function useSocket(
+  url: string | null,
+  onMessage: (msg: any) => void,
+  onOpen?: () => void,
+) {
+  const wsRef = useRef<WebSocket | null>(null);
 
-    useEffect(() => {
-        if (!url) return;
-        const ws = new WebSocket(url);
-        wsRef.current = ws;
+  useEffect(() => {
+    if (!url) return;
+    const ws = new WebSocket(url);
+    wsRef.current = ws;
 
-        ws.onopen = () => {
-            console.log("✅ WebSocket connected:", url);
-            onOpen?.();
-        };
+    ws.onopen = () => {
+      console.log("✅ WebSocket connected:", url);
+      onOpen?.();
+    };
 
-        ws.onclose = () => console.log("❌ WebSocket disconnected");
-        ws.onmessage = (event) => {
-            try {
-                const msg = JSON.parse(event.data);
-                onMessage(msg)
-            } catch (error) {
-                console.log("Invalid msg", error);
-            }
-        }
-        ws.onerror = (err) => console.log("webSocket err", err);
-        return () => {
-            ws.close()
-        }
-    }, [url])
+    ws.onclose = () => console.log("❌ WebSocket disconnected");
+    ws.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+        onMessage(msg);
+      } catch (error) {
+        console.log("Invalid msg", error);
+      }
+    };
+    ws.onerror = (err) => console.log("webSocket err", err);
+    return () => {
+      ws.close();
+    };
+  }, [url]);
 
-    const send = useCallback((payload: object) => {
-        if (wsRef.current?.readyState === WebSocket.OPEN) {
-            wsRef.current.send(JSON.stringify(payload));
-        }
-    }, [])
-    return {
-        send
+  const send = useCallback((payload: object) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify(payload));
     }
+  }, []);
+  return {
+    send,
+  };
 }

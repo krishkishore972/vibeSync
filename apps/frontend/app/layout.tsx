@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/providers";
-import { IBM_Plex_Sans, IBM_Plex_Mono, Playfair_Display } from "next/font/google";
-
- 
+import {
+  IBM_Plex_Sans,
+  IBM_Plex_Mono,
+  Playfair_Display,
+} from "next/font/google";
 
 export const metadata: Metadata = {
   title: "Create Next App",
@@ -12,21 +14,21 @@ export const metadata: Metadata = {
 };
 
 const ibmPlexSans = IBM_Plex_Sans({
-    subsets: ["latin"],
-    weight: ["300", "400", "500"],
-    variable: "--font-ibm-plex-sans",
+  subsets: ["latin"],
+  weight: ["300", "400", "500"],
+  variable: "--font-ibm-plex-sans",
 });
- 
+
 const ibmPlexMono = IBM_Plex_Mono({
-    subsets: ["latin"],
-    weight: ["400", "500"],
-    variable: "--font-ibm-plex-mono",
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  variable: "--font-ibm-plex-mono",
 });
- 
+
 const playfairDisplay = Playfair_Display({
-    subsets: ["latin"],
-    weight: ["400", "500", "600"],
-    variable: "--font-playfair-display",
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  variable: "--font-playfair-display",
 });
 
 export default function RootLayout({
@@ -35,12 +37,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-   <html lang="en" className={`${ibmPlexSans.variable} ${ibmPlexMono.variable} ${playfairDisplay.variable}`}>
-            <body className={ibmPlexSans.className}>
-              <Providers>
-                {children}
-              </Providers>
-            </body>
-        </html>
+    <html
+      lang="en"
+      className={`${ibmPlexSans.variable} ${ibmPlexMono.variable} ${playfairDisplay.variable}`}
+    >
+      <body className={ibmPlexSans.className}>
+        <Providers>{children}</Providers>
+      </body>
+    </html>
   );
 }
