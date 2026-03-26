@@ -1,11 +1,11 @@
 "use client";
 
 import axios from "axios";
-import { useSession } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-export default function DashBoard() {
+export default function Home() {
   const router = useRouter();
   const { data: session, status } = useSession();
 
@@ -28,9 +28,7 @@ export default function DashBoard() {
 
   function joinRoomHandler(input: string) {
     if (!input.trim()) return;
-
     let id = input.trim();
-
     try {
       const url = new URL(input.trim());
 
@@ -117,6 +115,14 @@ export default function DashBoard() {
           </div>
         </div>
 
+        {session?.user && (
+          <button
+            onClick={() => signOut()}
+            className="px-5 py-[8px] rounded-xl border border-[#E8A030]/20 bg-[#E8A030]/[0.07] hover:bg-[#E8A030]/[0.15] text-[#C8892A] font-mono text-[12px] tracking-[0.06em] transition-colors cursor-pointer"
+          >
+            Sign out
+          </button>
+        )}
         {/* Footer */}
         <div className="h-px bg-[#E8A030]/10" />
         <p className="font-mono text-[9px] tracking-[0.1em] text-[#4A4038] text-center">

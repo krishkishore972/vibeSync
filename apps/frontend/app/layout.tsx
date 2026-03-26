@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/providers";
 import {
@@ -42,7 +41,10 @@ export default function RootLayout({
       className={`${ibmPlexSans.variable} ${ibmPlexMono.variable} ${playfairDisplay.variable}`}
     >
       <body className={ibmPlexSans.className}>
-        <Providers>{children}</Providers>
+        <Providers>
+          
+          {children}
+          </Providers>
       </body>
     </html>
   );

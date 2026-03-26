@@ -21,16 +21,20 @@ export default function NowPlaying({ isHost }: { isHost: boolean }) {
   return (
     <div className="rounded-2xl overflow-hidden border border-[#E8A030]/10 bg-[#161310]">
       {/* YouTube embed */}
-      <div className="w-full bg-[#0E0C0A]">
-        <ReactPlayer
-          src={`https://www.youtube.com/embed/${currentSong.youtubeId}?autoplay=1`}
-          title={currentSong.title}
-          playing={true}
-          controls={true}
-          style={{ width: "100%", height: "auto", aspectRatio: "16/9" }}
-          onEnded={playNext}
-        />
-      </div>
+
+      {isHost && (
+        <div className="w-full bg-[#0E0C0A]">
+          <ReactPlayer
+            src={`https://www.youtube.com/watch?v=${currentSong.youtubeId}`}
+            playing={true}
+            controls={true}
+            width="100%"
+            height="100%"
+            style={{ aspectRatio: "16/9" }}
+            onEnded={playNext}
+          />
+        </div>
+      )}
 
       {/* Song info + Play Next */}
       <div className="flex items-center justify-between px-[18px] py-[14px]">

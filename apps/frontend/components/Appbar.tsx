@@ -3,35 +3,34 @@ import { signIn, signOut, useSession } from "next-auth/react";
 
 export default function Appbar() {
   const session = useSession();
+
   return (
-    <nav className="bg-white shadow-md w-full h-16 flex items-center justify-between px-4">
-      <div>
-        <h1 className="text-xl font-bold">Muzer</h1>
-      </div>
-      <div className="flex items-center gap-4">
+    <nav className="w-full h-14 flex items-center justify-between px-6 border-b border-[#E8A030]/10 bg-[#0E0C0A]">
+      <h1 className="font-serif text-[18px] font-semibold text-[#F5EDD8] tracking-wide">
+        Muzer
+      </h1>
+
+      <div className="flex items-center gap-3">
         {session.data?.user && (
-          <div>
+          <>
+            <span className="font-mono text-[12px] text-[#6B5F50]">
+              @{session.data.user.name}
+            </span>
             <button
-              className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors"
-              onClick={() => {
-                signOut();
-              }}
+              onClick={() => signOut()}
+              className="px-4 py-[7px] rounded-xl bg-[#E8A030]/[0.08] hover:bg-[#E8A030]/[0.15] border border-[#E8A030]/20 text-[#C8892A] font-mono text-[12px] tracking-[0.05em] transition-colors cursor-pointer"
             >
-              LogOut
+              Log out
             </button>
-          </div>
+          </>
         )}
         {!session.data?.user && (
-          <div>
-            <button
-              className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors"
-              onClick={() => {
-                signIn();
-              }}
-            >
-              Login
-            </button>
-          </div>
+          <button
+            onClick={() => signIn()}
+            className="px-4 py-[7px] rounded-xl bg-[#E8A030]/[0.08] hover:bg-[#E8A030]/[0.15] border border-[#E8A030]/20 text-[#C8892A] font-mono text-[12px] tracking-[0.05em] transition-colors cursor-pointer"
+          >
+            Sign in
+          </button>
         )}
       </div>
     </nav>
