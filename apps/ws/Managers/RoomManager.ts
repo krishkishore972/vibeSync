@@ -189,16 +189,39 @@ export class RoomManager {
     return room.currentSong ?? null;
   }
 
-  getQueue(roomId: string) {
+  getQueue(roomId: string, userId?: string) {
     const queue = this.rooms.get(roomId)?.queue ?? [];
-    return queue.map(({ upvoters, downvoters, ...song }) => song);
+    return queue.map((song) => {
+      const { upvoters, downvoters, ...rest } = song;
+      let userVote: "up" | "down" | null = null;
+      if (userId) {
+        if (upvoters.has(userId)) userVote = "up";
+        else if (downvoters.has(userId)) userVote = "down";
+      }
+      return { ...rest, userVote };
+    });
   }
 
-  getCurrentSong(roomId: string) {
+  getUserVotes(roomId: string, userId: string): Record<string, "up" | "down"> {
+    const queue = this.rooms.get(roomId)?.queue ?? [];
+    const votes: Record<string, "up" | "down"> = {};
+    queue.forEach((song) => {
+      if (song.upvoters.has(userId)) votes[song.id] = "up";
+      else if (song.downvoters.has(userId)) votes[song.id] = "down";
+    });
+    return votes;
+  }
+
+  getCurrentSong(roomId: string, userId?: string) {
     const song = this.rooms.get(roomId)?.currentSong ?? null;
     if (!song) return null;
     const { upvoters, downvoters, ...rest } = song;
-    return rest;
+    let userVote: "up" | "down" | null = null;
+    if (userId) {
+      if (upvoters.has(userId)) userVote = "up";
+      else if (downvoters.has(userId)) userVote = "down";
+    }
+    return { ...rest, userVote };
   }
 
   private sortQueue(room: Room) {
