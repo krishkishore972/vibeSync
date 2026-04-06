@@ -9,29 +9,57 @@ export function useSocket(
 
   useEffect(() => {
     if (!url) return;
-    const ws = new WebSocket(url);
-    wsRef.current = ws;
 
-    ws.onopen = () => {
-      console.log("✅ WebSocket connected:", url);
-      onOpen?.();
-    };
+    let reconnectTimer: NodeJS.Timeout;
+    let isMounted = true;
 
-    ws.onclose = () => console.log("❌ WebSocket disconnected");
-    ws.onmessage = (event) => {
-      try {
-        const msg = JSON.parse(event.data);
-        onMessage(msg);
-      } catch (error) {
-        console.log("Invalid msg", error);
-      }
+    // Connect to WebSocket server
+    const connect = () => {
+      if (!isMounted) return;
+
+      // Create WebSocket connection
+      const ws = new WebSocket(url);
+      wsRef.current = ws;
+
+      // Log successful connection and call onOpen callback
+      ws.onopen = () => {
+        console.log("WebSocket connected");
+        onOpen?.();
+      };
+      ws.onclose = () => {
+        console.log("WebSocket disconnected, reconnecting in 3s...");
+        reconnectTimer = setTimeout(connect, 3000);
+      };
+
+      // Handle incoming messages
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          onMessage(msg);
+        } catch (error) {
+          console.log("Invalid msg", error);
+        }
+      };
+
+      // Log WebSocket errors
+      ws.onerror = (err) => console.log("webSocket err", err);
+      return () => {
+        ws.close();
+      };
     };
-    ws.onerror = (err) => console.log("webSocket err", err);
+    connect();
+
+    // Cleanup on unmount
     return () => {
-      ws.close();
+      isMounted = false;
+      clearTimeout(reconnectTimer);
+      wsRef.current?.close();
     };
+
   }, [url]);
 
+
+  // Function to send messages to the WebSocket server
   const send = useCallback((payload: object) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify(payload));
