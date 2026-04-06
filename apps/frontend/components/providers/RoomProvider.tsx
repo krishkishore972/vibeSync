@@ -40,6 +40,9 @@ export function RoomProvider({
       case "room-joined":
         setQueue(msg.queue ?? []);
         setCurrentSong(msg.currentSong ?? null);
+        if (msg.listeners) {
+          setListners(msg.listeners);
+        }
         break;
       case "queue-updated":
         setQueue(msg.queue ?? []);

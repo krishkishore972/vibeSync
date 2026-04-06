@@ -55,6 +55,16 @@ export function useSocket(
       ws.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data);
+          if (
+            msg.type === "queue-updated" ||
+            msg.type === "song-changed" ||
+            msg.type === "room-joined"
+          ) {
+            console.log(`[WS] ${msg.type}:`, {
+              queueLength: msg.queue?.length,
+              queue: msg.queue,
+            });
+          }
           onMessageRef.current(msg);
         } catch (error) {
           console.log("Invalid msg", error);

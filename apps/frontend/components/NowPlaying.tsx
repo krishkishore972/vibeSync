@@ -4,7 +4,13 @@ import { useRoom } from "@/app/hooks/useRoom";
 import ReactPlayer from "react-player";
 
 export default function NowPlaying({ isHost }: { isHost: boolean }) {
-  const { currentSong, playNext } = useRoom();
+  const { currentSong, playNext, queue } = useRoom();
+
+  const handleVideoEnd = () => {
+    if (queue.length > 0) {
+      playNext();
+    }
+  };
 
   if (!currentSong)
     return (
@@ -31,7 +37,7 @@ export default function NowPlaying({ isHost }: { isHost: boolean }) {
             width="100%"
             height="100%"
             style={{ aspectRatio: "16/9" }}
-            onEnded={playNext}
+            onEnded={handleVideoEnd}
           />
         </div>
       )}
@@ -51,7 +57,8 @@ export default function NowPlaying({ isHost }: { isHost: boolean }) {
         {isHost && (
           <button
             onClick={playNext}
-            className="ml-4 shrink-0 bg-[#E8A030]/[0.08] hover:bg-[#E8A030]/[0.15] border border-[#E8A030]/20 text-[#C8892A] text-[12px] tracking-[0.04em] px-[14px] py-[7px] rounded-lg transition-colors cursor-pointer"
+            disabled={queue.length === 0}
+            className="ml-4 shrink-0 bg-[#E8A030]/[0.08] hover:bg-[#E8A030]/[0.15] border border-[#E8A030]/20 text-[#C8892A] text-[12px] tracking-[0.04em] px-[14px] py-[7px] rounded-lg transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Play Next ⏭
           </button>

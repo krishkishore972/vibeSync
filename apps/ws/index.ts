@@ -49,11 +49,14 @@ wss.on("connection", async (ws, req: IncomingMessage) => {
           }
           console.log("room joined");
           roomManager.joinRoom(message.roomId, userId, userId, userName, ws);
+          const room = roomManager.getRoom(message.roomId);
           ws.send(
             JSON.stringify({
               type: "room-joined",
               queue: roomManager.getQueue(message.roomId, userId),
               currentSong: roomManager.getCurrentSong(message.roomId, userId),
+              listeners: roomManager.getRoomUsers(message.roomId),
+              hostId: room?.hostId,
             }),
           );
           roomManager.broadcast(
@@ -77,22 +80,31 @@ wss.on("connection", async (ws, req: IncomingMessage) => {
             );
             break;
           }
+          console.log("add-song received:", {
+            roomId: message.roomId,
+            song: message.song,
+          });
           roomManager.addSong(message.roomId, message.song);
           const currentSong = roomManager.getCurrentSong(
             message.roomId,
             userId,
           );
+          console.log("After addSong, currentSong:", currentSong);
+          const queue = roomManager.getQueue(message.roomId, userId);
+          console.log("Queue after addSong:", queue);
           if (!currentSong) {
             const nextSong = roomManager.playNext(message.roomId);
+            console.log("No currentSong, played next:", nextSong);
             roomManager.broadcast(message.roomId, {
               type: "song-changed",
               currentSong: nextSong ? { ...nextSong, userVote: null } : null,
               queue: roomManager.getQueue(message.roomId, userId),
             });
           } else {
+            console.log("Has currentSong, broadcasting queue-updated");
             roomManager.broadcast(message.roomId, {
               type: "queue-updated",
-              queue: roomManager.getQueue(message.roomId, userId),
+              queue: queue,
             });
           }
           break;

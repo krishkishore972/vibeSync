@@ -1,7 +1,7 @@
 export function extractYouTubeId(url: string): string | null {
   try {
     const parsed = new URL(url);
-    let videoId = parsed.searchParams.get("v");
+    const videoId = parsed.searchParams.get("v");
     if (videoId) return videoId;
 
     if (parsed.hostname === "youtu.be") {

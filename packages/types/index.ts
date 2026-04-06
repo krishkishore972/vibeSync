@@ -40,7 +40,13 @@ export type ClientMessage =
 
 export type ServerMessage =
   | { type: "connected"; userId: string }
-  | { type: "room-joined"; queue: Song[]; currentSong: Song | null }
+  | {
+      type: "room-joined";
+      queue: Song[];
+      currentSong: Song | null;
+      listeners: { userId: string; userName: string }[];
+      hostId: string;
+    }
   | { type: "queue-updated"; queue: Song[] }
   | { type: "song-changed"; currentSong: Song | null; queue: Song[] }
   | { type: "user-joined"; userId: string; username: string }
