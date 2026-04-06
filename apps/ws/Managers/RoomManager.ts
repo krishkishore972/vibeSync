@@ -181,21 +181,23 @@ export class RoomManager {
 
     if (direction == "up") {
       if (upvoters.has(userId)) {
-        return false;
+        upvoters.delete(userId);
+      } else {
+        downvoters.delete(userId);
+        upvoters.add(userId);
       }
-      downvoters.delete(userId);
-      upvoters.add(userId);
     } else if (direction == "down") {
       if (downvoters.has(userId)) {
-        return false;
+        downvoters.delete(userId);
+      } else {
+        upvoters.delete(userId);
+        downvoters.add(userId);
       }
-      upvoters.delete(userId);
-      downvoters.add(userId);
     }
 
     song.upvoters = upvoters;
     song.downvoters = downvoters;
-    song.votes = upvoters.size - downvoters.size;
+    song.votes = this.calculateVotes(upvoters, downvoters);
     this.sortQueue(room);
     return true;
   }
@@ -217,7 +219,7 @@ export class RoomManager {
         ...nextSong,
         upvoters: new Set(),
         downvoters: new Set(),
-        votes: upvoters.size - downvoters.size,
+        votes: this.calculateVotes(upvoters, downvoters),
       };
     }
     return room.currentSong ?? null;
@@ -236,7 +238,11 @@ export class RoomManager {
         if (upvoters.has(userId)) userVote = "up";
         else if (downvoters.has(userId)) userVote = "down";
       }
-      return { ...rest, userVote, votes: upvoters.size - downvoters.size };
+      return {
+        ...rest,
+        userVote,
+        votes: this.calculateVotes(upvoters, downvoters),
+      };
     });
   }
 
@@ -263,7 +269,11 @@ export class RoomManager {
       if (upvoters.has(userId)) userVote = "up";
       else if (downvoters.has(userId)) userVote = "down";
     }
-    return { ...rest, userVote, votes: upvoters.size - downvoters.size };
+    return {
+      ...rest,
+      userVote,
+      votes: this.calculateVotes(upvoters, downvoters),
+    };
   }
 
   private sortQueue(room: Room) {
@@ -271,6 +281,13 @@ export class RoomManager {
       if (b.votes !== a.votes) return b.votes - a.votes;
       return a.addedAt - b.addedAt;
     });
+  }
+
+  private calculateVotes(
+    upvoters: Set<string>,
+    downvoters: Set<string>,
+  ): number {
+    return Math.max(0, upvoters.size - downvoters.size);
   }
 
   // broadcasting

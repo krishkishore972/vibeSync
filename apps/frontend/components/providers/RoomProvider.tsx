@@ -13,6 +13,12 @@ import { Song, Listner, RoomContext } from "@/components/context/RoomContext";
 import type { ServerMessage, ClientMessage } from "@repo/types";
 import axios from "axios";
 
+export type RoomError = {
+  message: string;
+  type: "vote" | "song" | "connection" | "unknown";
+  id?: string;
+};
+
 export function RoomProvider({
   children,
   roomId,
@@ -26,6 +32,7 @@ export function RoomProvider({
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [listners, setListners] = useState<Listner[]>([]);
   const [token, setToken] = useState<string | null>(null);
+  const [roomError, setRoomError] = useState<RoomError | null>(null);
   const sendRef = useRef<((payload: ClientMessage) => void) | null>(null);
 
   useEffect(() => {
@@ -35,43 +42,60 @@ export function RoomProvider({
       .catch(() => console.error("Failed to fetch token"));
   }, []);
 
-  const handleMessage = useCallback((msg: ServerMessage) => {
-    switch (msg.type) {
-      case "room-joined":
-        setQueue(msg.queue ?? []);
-        setCurrentSong(msg.currentSong ?? null);
-        if (msg.listeners) {
-          setListners(msg.listeners);
-        }
-        break;
-      case "queue-updated":
-        setQueue(msg.queue ?? []);
-        break;
-      case "song-changed":
-        setCurrentSong(msg.currentSong ?? null);
-        setQueue(msg.queue ?? []);
-        break;
-      case "user-joined":
-        setListners((prev) => {
-          if (prev.some((l) => l.userId === msg.userId)) {
-            return prev;
-          }
-          return [...prev, { userId: msg.userId, userName: msg.username }];
-        });
-        break;
-      case "user-left":
-        setListners((prev) =>
-          prev.filter((user) => user.userId !== msg.userId),
-        );
-        break;
-      case "voted-song":
-        setQueue(msg.queue ?? []);
-        break;
-      case "error":
-        console.error("Server error:", msg.message);
-        break;
-    }
+  const clearError = useCallback(() => {
+    setRoomError(null);
   }, []);
+
+  const handleMessage = useCallback(
+    (msg: ServerMessage) => {
+      switch (msg.type) {
+        case "room-joined":
+          setQueue(msg.queue ?? []);
+          setCurrentSong(msg.currentSong ?? null);
+          if (msg.listeners) {
+            setListners(msg.listeners);
+          }
+          break;
+        case "queue-updated":
+          setQueue(msg.queue ?? []);
+          break;
+        case "song-changed":
+          setCurrentSong(msg.currentSong ?? null);
+          setQueue(msg.queue ?? []);
+          break;
+        case "user-joined":
+          setListners((prev) => {
+            if (prev.some((l) => l.userId === msg.userId)) {
+              return prev;
+            }
+            return [...prev, { userId: msg.userId, userName: msg.username }];
+          });
+          break;
+        case "user-left":
+          setListners((prev) =>
+            prev.filter((user) => user.userId !== msg.userId),
+          );
+          break;
+        case "voted-song":
+          setQueue(msg.queue ?? []);
+          break;
+        case "error":
+          console.error("Server error:", msg.message);
+          const errorType = msg.message.toLowerCase().includes("vote")
+            ? "vote"
+            : msg.message.toLowerCase().includes("song")
+              ? "song"
+              : msg.message.toLowerCase().includes("connection") ||
+                  msg.message.toLowerCase().includes("token")
+                ? "connection"
+                : "unknown";
+          setRoomError({ message: msg.message, type: errorType });
+          setTimeout(clearError, 5000);
+          break;
+      }
+    },
+    [clearError],
+  );
 
   const wsUrl = token ? `ws://localhost:8000?token=${token}` : null;
 
@@ -95,7 +119,16 @@ export function RoomProvider({
   }
 
   function voteSong(songId: string, direction: "up" | "down") {
-    send({ type: "vote-song", songId, direction, roomId });
+    try {
+      send({ type: "vote-song", songId, direction, roomId });
+    } catch (error) {
+      setRoomError({
+        message: error instanceof Error ? error.message : "Cannot vote",
+        type: "vote",
+        id: songId,
+      });
+      setTimeout(clearError, 3000);
+    }
   }
 
   function playNext() {
@@ -104,7 +137,16 @@ export function RoomProvider({
 
   return (
     <RoomContext.Provider
-      value={{ queue, currentSong, listners, addSong, voteSong, playNext }}
+      value={{
+        queue,
+        currentSong,
+        listners,
+        addSong,
+        voteSong,
+        playNext,
+        roomError,
+        clearError,
+      }}
     >
       {children}
     </RoomContext.Provider>
