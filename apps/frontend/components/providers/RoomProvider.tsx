@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, {
+  useEffect,
+  useLayoutEffect,
+  useState,
+  useCallback,
+  useRef,
+} from "react";
 import { useSocket } from "@/app/hooks/useSocket";
 
 import { Song, Listner, RoomContext } from "@/components/context/RoomContext";
@@ -77,7 +83,7 @@ export function RoomProvider({
 
   const { send } = useSocket(wsUrl, handleMessage, handleOpen);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     sendRef.current = send;
   }, [send]);
 

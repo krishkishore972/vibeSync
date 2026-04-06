@@ -7,64 +7,80 @@ export function useSocket(
   onOpen?: () => void,
 ) {
   const wsRef = useRef<WebSocket | null>(null);
+  const onMessageRef = useRef(onMessage);
+  const onOpenRef = useRef(onOpen);
 
   useEffect(() => {
-    if (!url) return;
+    onMessageRef.current = onMessage;
+  }, [onMessage]);
 
-    let reconnectTimer: NodeJS.Timeout;
+  useEffect(() => {
+    onOpenRef.current = onOpen;
+  }, [onOpen]);
+
+  useEffect(() => {
+    if (!url) {
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
+      return;
+    }
+
+    let reconnectTimer: NodeJS.Timeout | null = null;
     let isMounted = true;
 
-    // Connect to WebSocket server
     const connect = () => {
       if (!isMounted) return;
 
-      // Create WebSocket connection
       const ws = new WebSocket(url);
       wsRef.current = ws;
 
-      // Log successful connection and call onOpen callback
       ws.onopen = () => {
         console.log("WebSocket connected");
-        onOpen?.();
-      };
-      ws.onclose = () => {
-        console.log("WebSocket disconnected, reconnecting in 3s...");
-        reconnectTimer = setTimeout(connect, 3000);
+        onOpenRef.current?.();
       };
 
-      // Handle incoming messages
+      ws.onclose = () => {
+        if (isMounted) {
+          console.log("WebSocket disconnected, reconnecting in 3s...");
+          reconnectTimer = setTimeout(connect, 3000);
+        }
+      };
+
+      ws.onerror = (err) => {
+        console.log("WebSocket error:", err);
+      };
+
       ws.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data);
-          onMessage(msg);
+          onMessageRef.current(msg);
         } catch (error) {
           console.log("Invalid msg", error);
         }
       };
-
-      // Log WebSocket errors
-      ws.onerror = (err) => console.log("webSocket err", err);
-      return () => {
-        ws.close();
-      };
     };
+
     connect();
 
-    // Cleanup on unmount
     return () => {
       isMounted = false;
-      clearTimeout(reconnectTimer);
-      wsRef.current?.close();
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+      }
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
     };
   }, [url]);
 
-  // Function to send messages to the WebSocket server
   const send = useCallback((payload: object) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify(payload));
     }
   }, []);
-  return {
-    send,
-  };
+
+  return { send };
 }

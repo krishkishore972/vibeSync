@@ -64,12 +64,13 @@ export async function POST(req: NextRequest) {
       song,
     });
   } catch (error) {
+    console.error("Error creating song:", error);
     return NextResponse.json(
       {
         message: "Err while creating stream",
       },
       {
-        status: 411,
+        status: 500,
       },
     );
   }

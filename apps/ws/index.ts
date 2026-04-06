@@ -29,11 +29,24 @@ wss.on("connection", async (ws, req: IncomingMessage) => {
   roomManager.addUser(userId, userName, ws);
   ws.on("message", (data) => {
     try {
-      const message = JSON.parse(data.toString());
-      console.log(message.type);
+      const dataStr = Buffer.isBuffer(data) ? data.toString() : String(data);
+      if (!dataStr || !dataStr.trim()) {
+        return;
+      }
+      const message = JSON.parse(dataStr);
+      console.log("Received:", message.type, message);
 
       switch (message.type) {
         case "join-room":
+          if (!message.roomId) {
+            ws.send(
+              JSON.stringify({
+                type: "error",
+                message: "Invalid join-room message",
+              }),
+            );
+            break;
+          }
           console.log("room joined");
           roomManager.joinRoom(message.roomId, userId, userId, userName, ws);
           ws.send(
@@ -55,6 +68,15 @@ wss.on("connection", async (ws, req: IncomingMessage) => {
           break;
 
         case "add-song": {
+          if (!message.roomId || !message.song) {
+            ws.send(
+              JSON.stringify({
+                type: "error",
+                message: "Invalid add-song message",
+              }),
+            );
+            break;
+          }
           roomManager.addSong(message.roomId, message.song);
           const currentSong = roomManager.getCurrentSong(
             message.roomId,
@@ -77,6 +99,15 @@ wss.on("connection", async (ws, req: IncomingMessage) => {
         }
 
         case "vote-song": {
+          if (!message.songId || !message.roomId || !message.direction) {
+            ws.send(
+              JSON.stringify({
+                type: "error",
+                message: "Invalid vote-song message",
+              }),
+            );
+            break;
+          }
           const success = roomManager.voteSong(
             userId,
             message.songId,
@@ -127,6 +158,13 @@ wss.on("connection", async (ws, req: IncomingMessage) => {
         }
       }
     } catch (error) {
+      console.error("Message handling error:", {
+        dataType: typeof data,
+        dataPreview: Buffer.isBuffer(data)
+          ? data.toString().substring(0, 100)
+          : String(data).substring(0, 100),
+        error: String(error),
+      });
       ws.send(JSON.stringify({ type: "error", message: "Invalid JSON" }));
     }
   });
