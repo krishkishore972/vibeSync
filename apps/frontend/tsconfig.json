@@ -19,7 +19,9 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@repo/types": ["../../packages/types"],
+      "@repo/types/*": ["../../packages/types/*"]
     }
   },
   "include": [

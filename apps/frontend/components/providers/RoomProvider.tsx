@@ -4,6 +4,7 @@ import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useSocket } from "@/app/hooks/useSocket";
 
 import { Song, Listner, RoomContext } from "@/components/context/RoomContext";
+import type { ServerMessage, ClientMessage } from "@repo/types";
 import axios from "axios";
 
 export function RoomProvider({
@@ -19,7 +20,7 @@ export function RoomProvider({
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [listners, setListners] = useState<Listner[]>([]);
   const [token, setToken] = useState<string | null>(null);
-  const sendRef = useRef<((payload: object) => void) | null>(null);
+  const sendRef = useRef<((payload: ClientMessage) => void) | null>(null);
 
   useEffect(() => {
     axios
@@ -28,7 +29,7 @@ export function RoomProvider({
       .catch(() => console.error("Failed to fetch token"));
   }, []);
 
-  const handleMessage = useCallback((msg: any) => {
+  const handleMessage = useCallback((msg: ServerMessage) => {
     switch (msg.type) {
       case "room-joined":
         setQueue(msg.queue ?? []);
@@ -54,6 +55,9 @@ export function RoomProvider({
           prev.filter((user) => user.userId !== msg.userId),
         );
         break;
+      case "voted-song":
+        setQueue(msg.queue ?? []);
+        break;
       case "error":
         console.error("Server error:", msg.message);
         break;
@@ -62,12 +66,20 @@ export function RoomProvider({
 
   const wsUrl = token ? `ws://localhost:8000?token=${token}` : null;
 
-  const { send } = useSocket(wsUrl, handleMessage, () => {
-    console.log(" Sending join-room", roomId);
-    sendRef.current?.({ type: "join-room", roomId, hostId: userId });
-  });
+  const handleOpen = useCallback(() => {
+    const joinPayload: ClientMessage = {
+      type: "join-room",
+      roomId,
+      hostId: userId,
+    };
+    sendRef.current?.(joinPayload);
+  }, [roomId, userId]);
 
-  sendRef.current = send;
+  const { send } = useSocket(wsUrl, handleMessage, handleOpen);
+
+  useEffect(() => {
+    sendRef.current = send;
+  }, [send]);
 
   function addSong(song: Song) {
     send({ type: "add-song", roomId, song });

@@ -1,14 +1,7 @@
 import { createContext } from "react";
-export type Song = {
-  id: string;
-  title: string;
-  url: string;
-  youtubeId: string;
-  addedBy: string;
-  addedAt: number;
-  votes: number;
-  userVote: "up" | "down" | null;
-};
+import type { Song } from "@repo/types";
+
+export type { Song };
 
 export type Listner = {
   userName: string;

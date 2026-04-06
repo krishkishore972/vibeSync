@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef } from "react";
+import type { ServerMessage } from "@repo/types";
 
 export function useSocket(
   url: string | null,
-  onMessage: (msg: any) => void,
+  onMessage: (msg: ServerMessage) => void,
   onOpen?: () => void,
 ) {
   const wsRef = useRef<WebSocket | null>(null);
@@ -55,9 +56,7 @@ export function useSocket(
       clearTimeout(reconnectTimer);
       wsRef.current?.close();
     };
-
   }, [url]);
-
 
   // Function to send messages to the WebSocket server
   const send = useCallback((payload: object) => {

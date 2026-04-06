@@ -39,8 +39,8 @@ wss.on("connection", async (ws, req: IncomingMessage) => {
           ws.send(
             JSON.stringify({
               type: "room-joined",
-              queue: roomManager.getQueue(message.roomId),
-              currentSong: roomManager.getCurrentSong(message.roomId),
+              queue: roomManager.getQueue(message.roomId, userId),
+              currentSong: roomManager.getCurrentSong(message.roomId, userId),
             }),
           );
           roomManager.broadcast(
@@ -56,18 +56,21 @@ wss.on("connection", async (ws, req: IncomingMessage) => {
 
         case "add-song": {
           roomManager.addSong(message.roomId, message.song);
-          const currentSong = roomManager.getCurrentSong(message.roomId);
+          const currentSong = roomManager.getCurrentSong(
+            message.roomId,
+            userId,
+          );
           if (!currentSong) {
             const nextSong = roomManager.playNext(message.roomId);
             roomManager.broadcast(message.roomId, {
               type: "song-changed",
-              currentSong: nextSong,
-              queue: roomManager.getQueue(message.roomId),
+              currentSong: nextSong ? { ...nextSong, userVote: null } : null,
+              queue: roomManager.getQueue(message.roomId, userId),
             });
           } else {
             roomManager.broadcast(message.roomId, {
               type: "queue-updated",
-              queue: roomManager.getQueue(message.roomId),
+              queue: roomManager.getQueue(message.roomId, userId),
             });
           }
           break;
@@ -83,7 +86,7 @@ wss.on("connection", async (ws, req: IncomingMessage) => {
           if (success) {
             roomManager.broadcast(message.roomId, {
               type: "voted-song",
-              queue: roomManager.getQueue(message.roomId),
+              queue: roomManager.getQueue(message.roomId, userId),
             });
           } else {
             ws.send(JSON.stringify({ type: "error", message: "Vote failed" }));
@@ -111,8 +114,8 @@ wss.on("connection", async (ws, req: IncomingMessage) => {
           const nextSong = roomManager.playNext(message.roomId);
           roomManager.broadcast(message.roomId, {
             type: "song-changed",
-            currentSong: nextSong,
-            queue: roomManager.getQueue(message.roomId),
+            currentSong: nextSong ? { ...nextSong, userVote: null } : null,
+            queue: roomManager.getQueue(message.roomId, userId),
           });
           break;
         }
