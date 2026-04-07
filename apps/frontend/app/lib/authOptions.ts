@@ -1,4 +1,4 @@
-import { prisma } from "@/app/lib/db";
+import { prisma } from "@repo/db";
 import { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 

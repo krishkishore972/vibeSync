@@ -9,9 +9,8 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@auth/prisma-adapter": "^2.11.1",
-    "@prisma/client": "^7.5.0",
     "@repo/types": "workspace:*",
+    "@repo/db": "workspace:*",
     "@types/axios": "^0.14.4",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/ws": "^8.18.1",
@@ -39,12 +38,10 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
-    "@types/pg": "^8.18.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
-    "prisma": "^7.5.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   },

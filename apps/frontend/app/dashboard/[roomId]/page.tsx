@@ -14,7 +14,7 @@ import {
 import { ErrorToast } from "@/components/ErrorToast";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
-import { prisma } from "@/app/lib/db";
+import {prisma } from "@repo/db";
 import { authOptions } from "@/app/lib/authOptions";
 
 export default async function RoomPage({
@@ -57,7 +57,7 @@ export default async function RoomPage({
             </div>
             <div className="flex-1 min-h-0 overflow-y-auto p-4 bg-[#0E0C0A]">
               <ComponentErrorBoundary fallback={<QueueFallback />}>
-                <Queue roomId={roomId} />
+                <Queue />
               </ComponentErrorBoundary>
             </div>
           </div>
